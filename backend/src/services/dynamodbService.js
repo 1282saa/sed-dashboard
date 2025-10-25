@@ -14,12 +14,12 @@ const cognitoClient = new CognitoIdentityProviderClient({ region: 'us-east-1' })
 
 // 사용자 테이블 이름
 const USER_TABLES = {
-  title: 'nexus-title-generator-users-prod',
+  title: '',
   // 다른 서비스의 사용자 테이블은 필요시 추가
 };
 
 // Cognito User Pool ID
-const USER_POOL_ID = 'us-east-1_ohLOswurY'; // sedaily.ai_cognito
+const USER_POOL_ID = ''; // sedaily.ai_cognito
 
 /**
  * Cognito에서 사용자 정보 가져오기
