@@ -1,0 +1,21 @@
+{
+  "name": "unified-monitoring-backend",
+  "version": "1.0.0",
+  "description": "Backend Lambda functions for unified monitoring dashboard",
+  "main": "src/handlers/index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy": "serverless deploy",
+    "local": "serverless offline"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.917.0",
+    "@aws-sdk/client-dynamodb": "^3.705.0",
+    "@aws-sdk/lib-dynamodb": "^3.705.0"
+  },
+  "devDependencies": {
+    "serverless": "^4.6.0",
+    "serverless-offline": "^14.4.0"
+  }
+}
