@@ -10,7 +10,8 @@ import {
   getDailyTrend,
   searchUserByEmail,
   getUserUsage,
-  getAllUsersWithUsage
+  getAllUsersWithUsage,
+  getUserRegistrationTrend
 } from '../services/dynamodbService.js';
 import { SERVICES_CONFIG } from '../config/services.js';
 
@@ -283,11 +284,16 @@ export const getMonthlyUsageTrend = async (event) => {
 export const getUserUsageByEmail = async (event) => {
   try {
     const email = event.queryStringParameters?.email;
-    const serviceId = event.queryStringParameters?.serviceId || 'title';
+    const serviceId = event.queryStringParameters?.serviceId || '';
     const yearMonth = event.queryStringParameters?.yearMonth || getCurrentYearMonth();
 
     if (!email) {
       return errorResponse('Email is required', 400);
+    }
+
+    // 전체 서비스 조회는 이 API에서 지원하지 않음
+    if (!serviceId) {
+      return errorResponse('serviceId is required for user search', 400);
     }
 
     console.log(`Searching for user: ${email} in service: ${serviceId}`);
@@ -343,21 +349,39 @@ export const getUserUsageByEmail = async (event) => {
  */
 export const getAllUsersUsage = async (event) => {
   try {
-    const serviceId = event.queryStringParameters?.serviceId || 'title';
+    // serviceId가 없으면 전체 서비스 조회 (빈 문자열 또는 null)
+    const serviceId = event.queryStringParameters?.serviceId || '';
     const yearMonth = event.queryStringParameters?.yearMonth || getCurrentYearMonth();
 
-    console.log(`Fetching all users with usage for service: ${serviceId}, yearMonth: ${yearMonth}`);
+    console.log(`Fetching all users with usage for service: ${serviceId || 'ALL SERVICES'}, yearMonth: ${yearMonth}`);
 
     const usersWithUsage = await getAllUsersWithUsage(serviceId, yearMonth);
 
     return successResponse({
-      serviceId,
+      serviceId: serviceId || 'all',
       yearMonth,
       totalUsers: usersWithUsage.length,
       users: usersWithUsage
     });
   } catch (error) {
     console.error('Error in getAllUsersUsage:', error);
+    return errorResponse(error.message);
+  }
+};
+
+/**
+ * GET /users/registration-trend
+ * 사용자 가입 추이 조회
+ */
+export const getUsersRegistrationTrend = async (event) => {
+  try {
+    console.log('Fetching user registration trend');
+
+    const trendData = await getUserRegistrationTrend();
+
+    return successResponse(trendData);
+  } catch (error) {
+    console.error('Error in getUsersRegistrationTrend:', error);
     return errorResponse(error.message);
   }
 };

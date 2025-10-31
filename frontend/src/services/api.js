@@ -99,8 +99,14 @@ export const fetchTopEngines = async (yearMonth = '2025-10', limit = 5) => {
  */
 export const fetchDailyUsageTrend = async (serviceId = null, yearMonth = '2025-10') => {
   try {
+    // serviceId가 빈 문자열이거나 null이면 파라미터에서 제외
+    const params = { yearMonth };
+    if (serviceId) {
+      params.serviceId = serviceId;
+    }
+
     const response = await apiClient.get('/usage/trend/daily', {
-      params: { serviceId, yearMonth }
+      params
     });
     return response.data;
   } catch (error) {
@@ -142,14 +148,33 @@ export const fetchUserUsageByEmail = async (email, serviceId = 'title', yearMont
 /**
  * 모든 사용자와 사용량 조회
  */
-export const fetchAllUsersUsage = async (serviceId = 'title', yearMonth = '2025-08') => {
+export const fetchAllUsersUsage = async (serviceId = '', yearMonth = '2025-08') => {
   try {
+    // serviceId가 빈 문자열이면 파라미터에서 제외
+    const params = { yearMonth };
+    if (serviceId) {
+      params.serviceId = serviceId;
+    }
+
     const response = await apiClient.get('/usage/users/all', {
-      params: { serviceId, yearMonth }
+      params
     });
     return response.data;
   } catch (error) {
     console.error('Failed to fetch all users usage:', error);
+    throw error;
+  }
+};
+
+/**
+ * 사용자 가입 추이 조회
+ */
+export const fetchUserRegistrationTrend = async () => {
+  try {
+    const response = await apiClient.get('/usage/users/registration-trend');
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch user registration trend:', error);
     throw error;
   }
 };

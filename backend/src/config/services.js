@@ -11,6 +11,7 @@ export const SERVICES_CONFIG = [
     displayName: '제목 (Nexus Title)',
     description: 'AI 기반 제목 생성 서비스',
     usageTable: 'nx-tt-dev-ver3-usage-tracking',
+    usageTableEn: 'tf1-usage-two', // 영어 버전
     conversationsTable: 'nx-tt-dev-ver3-conversations',
     color: '#8B5CF6', // purple
     icon: '📝',
@@ -18,6 +19,7 @@ export const SERVICES_CONFIG = [
     engines: ['T5', 'C7', 'pro'],
     active: true, // ✅ 124개 레코드
     keyStructure: { PK: 'user#userId', SK: 'engine#engineType#yearMonth' },
+    keyStructureEn: { PK: 'userId', SK: 'date' }, // 영어 버전 키 구조
   },
   {
     id: 'proofreading',
@@ -67,6 +69,7 @@ export const SERVICES_CONFIG = [
     displayName: '퇴고 (Seoul Economic Column)',
     description: 'AI 기반 칼럼 퇴고',
     usageTable: 'sedaily-column-usage',
+    usageTableEn: 'er1-usage-two', // 영어 버전
     conversationsTable: 'sedaily-column-conversations',
     color: '#EC4899', // pink
     icon: '✍️',
@@ -74,6 +77,7 @@ export const SERVICES_CONFIG = [
     engines: ['column', 'C1'],
     active: true, // ✅ 활성화됨
     keyStructure: { PK: 'userId', SK: 'usageDate#engineType' },
+    keyStructureEn: { PK: 'userId', SK: 'date' }, // 영어 버전 키 구조
   },
   {
     id: 'buddy',
