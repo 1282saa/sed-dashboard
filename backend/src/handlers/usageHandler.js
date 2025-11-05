@@ -14,33 +14,23 @@ import {
   getUserRegistrationTrend
 } from '../services/dynamodbService.js';
 import { SERVICES_CONFIG } from '../config/services.js';
-
-/**
- * CORS 헤더
- */
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
-  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS'
-};
-
-/**
- * 성공 응답
- */
-const successResponse = (data) => ({
-  statusCode: 200,
-  headers: CORS_HEADERS,
-  body: JSON.stringify(data)
-});
-
-/**
- * 에러 응답
- */
-const errorResponse = (message, statusCode = 500) => ({
-  statusCode,
-  headers: CORS_HEADERS,
-  body: JSON.stringify({ error: message })
-});
+import { DEFAULTS } from '../config/constants.js';
+import {
+  validateEmail,
+  validateYearMonth,
+  validateServiceId,
+  validateLimit,
+  validateMonths,
+  validateRequired
+} from '../utils/validators.js';
+import {
+  successResponse,
+  errorResponse,
+  validationErrorResponse,
+  notFoundResponse,
+  optionsResponse
+} from '../utils/response.js';
+import { handleError, NotFoundError, ValidationError } from '../utils/errors.js';
 
 /**
  * GET /usage/all
@@ -48,7 +38,14 @@ const errorResponse = (message, statusCode = 500) => ({
  */
 export const getAllUsage = async (event) => {
   try {
-    const yearMonth = event.queryStringParameters?.yearMonth || getCurrentYearMonth();
+    const origin = event.headers?.origin || event.headers?.Origin;
+    const yearMonth = event.queryStringParameters?.yearMonth || DEFAULTS.YEAR_MONTH;
+
+    // 검증
+    const validation = validateYearMonth(yearMonth);
+    if (!validation.valid) {
+      return validationErrorResponse([{ field: 'yearMonth', error: validation.error }], origin);
+    }
 
     const allData = await getAllServicesUsage(yearMonth);
 
@@ -71,10 +68,11 @@ export const getAllUsage = async (event) => {
       };
     });
 
-    return successResponse(result);
+    return successResponse(result, origin);
   } catch (error) {
     console.error('Error in getAllUsage:', error);
-    return errorResponse(error.message);
+    const origin = event.headers?.origin || event.headers?.Origin;
+    return errorResponse(error.message, 500, origin);
   }
 };
 
@@ -283,17 +281,30 @@ export const getMonthlyUsageTrend = async (event) => {
  */
 export const getUserUsageByEmail = async (event) => {
   try {
+    const origin = event.headers?.origin || event.headers?.Origin;
     const email = event.queryStringParameters?.email;
     const serviceId = event.queryStringParameters?.serviceId || '';
-    const yearMonth = event.queryStringParameters?.yearMonth || getCurrentYearMonth();
+    const yearMonth = event.queryStringParameters?.yearMonth || DEFAULTS.YEAR_MONTH;
 
-    if (!email) {
-      return errorResponse('Email is required', 400);
+    // 검증
+    const emailValidation = validateRequired(email, 'email');
+    if (!emailValidation.valid) {
+      return validationErrorResponse([{ field: 'email', error: emailValidation.error }], origin);
     }
 
-    // 전체 서비스 조회는 이 API에서 지원하지 않음
-    if (!serviceId) {
-      return errorResponse('serviceId is required for user search', 400);
+    const emailFormatValidation = validateEmail(email);
+    if (!emailFormatValidation.valid) {
+      return validationErrorResponse([{ field: 'email', error: emailFormatValidation.error }], origin);
+    }
+
+    const serviceValidation = validateRequired(serviceId, 'serviceId');
+    if (!serviceValidation.valid) {
+      return validationErrorResponse([{ field: 'serviceId', error: serviceValidation.error }], origin);
+    }
+
+    const yearMonthValidation = validateYearMonth(yearMonth);
+    if (!yearMonthValidation.valid) {
+      return validationErrorResponse([{ field: 'yearMonth', error: yearMonthValidation.error }], origin);
     }
 
     console.log(`Searching for user: ${email} in service: ${serviceId}`);
@@ -302,7 +313,7 @@ export const getUserUsageByEmail = async (event) => {
     const user = await searchUserByEmail(email, serviceId);
 
     if (!user) {
-      return errorResponse('User not found', 404);
+      return notFoundResponse('User', origin);
     }
 
     console.log(`Found user: ${user.user_id}`);
@@ -336,10 +347,11 @@ export const getUserUsageByEmail = async (event) => {
           yearMonth: item.yearMonth
         }))
       }
-    });
+    }, origin);
   } catch (error) {
     console.error('Error in getUserUsageByEmail:', error);
-    return errorResponse(error.message);
+    const origin = event.headers?.origin || event.headers?.Origin;
+    return errorResponse(error.message, 500, origin);
   }
 };
 
@@ -386,10 +398,3 @@ export const getUsersRegistrationTrend = async (event) => {
   }
 };
 
-/**
- * 현재 년월 (YYYY-MM)
- */
-const getCurrentYearMonth = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-};
