@@ -185,5 +185,252 @@
     "serviceProviderAwsCfStackUpdated": null,
     "serviceProviderAwsCfStackStatus": null,
     "serviceProviderAwsCfStackOutputs": null
+  },
+  "/Users/yeong-gwang/Documents/work/서울경제신문/DEV/Sedailyio/dashboard_nexus/ver1/backend/serverless.yml": {
+    "versionFramework": "4.22.0",
+    "servicePath": "/Users/yeong-gwang/Documents/work/서울경제신문/DEV/Sedailyio/dashboard_nexus/ver1/backend/serverless.yml",
+    "serviceConfigFileName": "serverless.yml",
+    "service": {
+      "service": "unified-monitoring-dashboard",
+      "frameworkVersion": "4",
+      "provider": {
+        "name": "aws",
+        "runtime": "nodejs20.x",
+        "region": "us-east-1",
+        "stage": "${opt:stage, 'dev'}",
+        "memorySize": 512,
+        "timeout": 30,
+        "environment": {
+          "AWS_NODEJS_CONNECTION_REUSE_ENABLED": 1,
+          "STAGE": "${self:provider.stage}"
+        },
+        "iam": {
+          "role": {
+            "statements": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "dynamodb:Scan",
+                  "dynamodb:Query",
+                  "dynamodb:GetItem"
+                ],
+                "Resource": [
+                  "arn:aws:dynamodb:${self:provider.region}:*:table/nx-tt-dev-ver3-usage-tracking",
+                  "arn:aws:dynamodb:${self:provider.region}:*:table/nx-wt-prf-usage",
+                  "arn:aws:dynamodb:${self:provider.region}:*:table/w1-usage",
+                  "arn:aws:dynamodb:${self:provider.region}:*:table/f1-usage-two",
+                  "arn:aws:dynamodb:${self:provider.region}:*:table/sedaily-column-usage",
+                  "arn:aws:dynamodb:${self:provider.region}:*:table/p2-two-usage-two",
+                  "arn:aws:dynamodb:${self:provider.region}:*:table/tf1-usage-two",
+                  "arn:aws:dynamodb:${self:provider.region}:*:table/er1-usage-two"
+                ]
+              },
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "cognito-idp:AdminGetUser",
+                  "cognito-idp:ListUsers"
+                ],
+                "Resource": [
+                  "arn:aws:cognito-idp:${self:provider.region}:*:userpool/us-east-1_ohLOswurY"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "functions": {
+        "getAllUsage": {
+          "handler": "src/handlers/usageHandler.getAllUsage",
+          "events": [
+            {
+              "http": {
+                "path": "usage/all",
+                "method": "get",
+                "cors": true
+              }
+            }
+          ]
+        },
+        "getUsageByService": {
+          "handler": "src/handlers/usageHandler.getUsageByService",
+          "events": [
+            {
+              "http": {
+                "path": "usage/{serviceId}",
+                "method": "get",
+                "cors": true
+              }
+            }
+          ]
+        },
+        "getUsageSummary": {
+          "handler": "src/handlers/usageHandler.getUsageSummary",
+          "events": [
+            {
+              "http": {
+                "path": "usage/summary",
+                "method": "get",
+                "cors": true
+              }
+            }
+          ]
+        },
+        "getTopServices": {
+          "handler": "src/handlers/usageHandler.getTopServices",
+          "events": [
+            {
+              "http": {
+                "path": "usage/top/services",
+                "method": "get",
+                "cors": true
+              }
+            }
+          ]
+        },
+        "getTopEngines": {
+          "handler": "src/handlers/usageHandler.getTopEngines",
+          "events": [
+            {
+              "http": {
+                "path": "usage/top/engines",
+                "method": "get",
+                "cors": true
+              }
+            }
+          ]
+        },
+        "getDailyUsageTrend": {
+          "handler": "src/handlers/usageHandler.getDailyUsageTrend",
+          "events": [
+            {
+              "http": {
+                "path": "usage/trend/daily",
+                "method": "get",
+                "cors": true
+              }
+            }
+          ]
+        },
+        "getMonthlyUsageTrend": {
+          "handler": "src/handlers/usageHandler.getMonthlyUsageTrend",
+          "events": [
+            {
+              "http": {
+                "path": "usage/trend/monthly",
+                "method": "get",
+                "cors": true
+              }
+            }
+          ]
+        },
+        "getUserUsageByEmail": {
+          "handler": "src/handlers/usageHandler.getUserUsageByEmail",
+          "events": [
+            {
+              "http": {
+                "path": "usage/user",
+                "method": "get",
+                "cors": true
+              }
+            }
+          ]
+        },
+        "getAllUsersUsage": {
+          "handler": "src/handlers/usageHandler.getAllUsersUsage",
+          "events": [
+            {
+              "http": {
+                "path": "usage/users/all",
+                "method": "get",
+                "cors": true
+              }
+            }
+          ]
+        },
+        "getUsersRegistrationTrend": {
+          "handler": "src/handlers/usageHandler.getUsersRegistrationTrend",
+          "events": [
+            {
+              "http": {
+                "path": "usage/users/registration-trend",
+                "method": "get",
+                "cors": true
+              }
+            }
+          ]
+        }
+      },
+      "plugins": [
+        "serverless-offline"
+      ],
+      "custom": {
+        "serverless-offline": {
+          "httpPort": 3001
+        }
+      }
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "nodejs20.x",
+      "region": "us-east-1",
+      "stage": "${opt:stage, 'dev'}",
+      "memorySize": 512,
+      "timeout": 30,
+      "environment": {
+        "AWS_NODEJS_CONNECTION_REUSE_ENABLED": 1,
+        "STAGE": "${self:provider.stage}"
+      },
+      "iam": {
+        "role": {
+          "statements": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:Scan",
+                "dynamodb:Query",
+                "dynamodb:GetItem"
+              ],
+              "Resource": [
+                "arn:aws:dynamodb:${self:provider.region}:*:table/nx-tt-dev-ver3-usage-tracking",
+                "arn:aws:dynamodb:${self:provider.region}:*:table/nx-wt-prf-usage",
+                "arn:aws:dynamodb:${self:provider.region}:*:table/w1-usage",
+                "arn:aws:dynamodb:${self:provider.region}:*:table/f1-usage-two",
+                "arn:aws:dynamodb:${self:provider.region}:*:table/sedaily-column-usage",
+                "arn:aws:dynamodb:${self:provider.region}:*:table/p2-two-usage-two",
+                "arn:aws:dynamodb:${self:provider.region}:*:table/tf1-usage-two",
+                "arn:aws:dynamodb:${self:provider.region}:*:table/er1-usage-two"
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "cognito-idp:AdminGetUser",
+                "cognito-idp:ListUsers"
+              ],
+              "Resource": [
+                "arn:aws:cognito-idp:${self:provider.region}:*:userpool/us-east-1_ohLOswurY"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "error": {
+      "message": "You must sign in or use a license key with Serverless Framework V.4 and later versions. Please use \"serverless login\".",
+      "stack": "Error: You must sign in or use a license key with Serverless Framework V.4 and later versions. Please use \"serverless login\".\n    at Authentication.getAuthenticatedData (file:///Users/yeong-gwang/.serverless/releases/4.22.0/package/dist/sf-core.js:717:11064)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async Authentication.authenticate (file:///Users/yeong-gwang/.serverless/releases/4.22.0/package/dist/sf-core.js:719:22222)\n    at async TraditionalRunner.resolveVariablesAndAuthenticate (file:///Users/yeong-gwang/.serverless/releases/4.22.0/package/dist/sf-core.js:726:1266)\n    at async TraditionalRunner.run (file:///Users/yeong-gwang/.serverless/releases/4.22.0/package/dist/sf-core.js:1353:27914)\n    at async route (file:///Users/yeong-gwang/.serverless/releases/4.22.0/package/dist/sf-core.js:1528:2878)\n    at async Object.run (file:///Users/yeong-gwang/.serverless/releases/4.22.0/package/dist/sf-core.js:1529:3755)\n    at async run2 (file:///Users/yeong-gwang/.serverless/releases/4.22.0/package/dist/sf-core.js:1529:4909)"
+    },
+    "serviceRawFile": "service: unified-monitoring-dashboard\n\nframeworkVersion: '4'\n\nprovider:\n  name: aws\n  runtime: nodejs20.x\n  region: us-east-1\n  stage: ${opt:stage, 'dev'}\n  memorySize: 512\n  timeout: 30\n\n  environment:\n    AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1\n    STAGE: ${self:provider.stage}\n\n  iam:\n    role:\n      statements:\n        # DynamoDB 읽기 권한 (한국어 테이블)\n        - Effect: Allow\n          Action:\n            - dynamodb:Scan\n            - dynamodb:Query\n            - dynamodb:GetItem\n          Resource:\n            - arn:aws:dynamodb:${self:provider.region}:*:table/nx-tt-dev-ver3-usage-tracking\n            - arn:aws:dynamodb:${self:provider.region}:*:table/nx-wt-prf-usage\n            - arn:aws:dynamodb:${self:provider.region}:*:table/w1-usage\n            - arn:aws:dynamodb:${self:provider.region}:*:table/f1-usage-two\n            - arn:aws:dynamodb:${self:provider.region}:*:table/sedaily-column-usage\n            - arn:aws:dynamodb:${self:provider.region}:*:table/p2-two-usage-two\n            # 영어 버전 테이블 추가\n            - arn:aws:dynamodb:${self:provider.region}:*:table/tf1-usage-two\n            - arn:aws:dynamodb:${self:provider.region}:*:table/er1-usage-two\n        # Cognito 읽기 권한\n        - Effect: Allow\n          Action:\n            - cognito-idp:AdminGetUser\n            - cognito-idp:ListUsers\n          Resource:\n            - arn:aws:cognito-idp:${self:provider.region}:*:userpool/us-east-1_ohLOswurY\n\nfunctions:\n  # 전체 서비스 사용량 조회\n  getAllUsage:\n    handler: src/handlers/usageHandler.getAllUsage\n    events:\n      - http:\n          path: usage/all\n          method: get\n          cors: true\n\n  # 특정 서비스 사용량 조회\n  getUsageByService:\n    handler: src/handlers/usageHandler.getUsageByService\n    events:\n      - http:\n          path: usage/{serviceId}\n          method: get\n          cors: true\n\n  # 사용량 요약 통계\n  getUsageSummary:\n    handler: src/handlers/usageHandler.getUsageSummary\n    events:\n      - http:\n          path: usage/summary\n          method: get\n          cors: true\n\n  # Top 5 서비스\n  getTopServices:\n    handler: src/handlers/usageHandler.getTopServices\n    events:\n      - http:\n          path: usage/top/services\n          method: get\n          cors: true\n\n  # Top 5 엔진\n  getTopEngines:\n    handler: src/handlers/usageHandler.getTopEngines\n    events:\n      - http:\n          path: usage/top/engines\n          method: get\n          cors: true\n\n  # 일별 사용량 추이\n  getDailyUsageTrend:\n    handler: src/handlers/usageHandler.getDailyUsageTrend\n    events:\n      - http:\n          path: usage/trend/daily\n          method: get\n          cors: true\n\n  # 월별 사용량 추이\n  getMonthlyUsageTrend:\n    handler: src/handlers/usageHandler.getMonthlyUsageTrend\n    events:\n      - http:\n          path: usage/trend/monthly\n          method: get\n          cors: true\n\n  # 사용자별 사용량 조회 (이메일 검색)\n  getUserUsageByEmail:\n    handler: src/handlers/usageHandler.getUserUsageByEmail\n    events:\n      - http:\n          path: usage/user\n          method: get\n          cors: true\n\n  # 전체 사용자 및 사용량 조회\n  getAllUsersUsage:\n    handler: src/handlers/usageHandler.getAllUsersUsage\n    events:\n      - http:\n          path: usage/users/all\n          method: get\n          cors: true\n\n  # 사용자 가입 추이\n  getUsersRegistrationTrend:\n    handler: src/handlers/usageHandler.getUsersRegistrationTrend\n    events:\n      - http:\n          path: usage/users/registration-trend\n          method: get\n          cors: true\n\nplugins:\n  - serverless-offline\n\ncustom:\n  serverless-offline:\n    httpPort: 3001\n",
+    "command": [
+      "deploy"
+    ],
+    "options": {
+      "stage": "dev"
+    },
+    "serviceProviderAwsCfStackId": null,
+    "serviceProviderAwsCfStackCreated": null,
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": null,
+    "serviceProviderAwsCfStackOutputs": null
   }
 }

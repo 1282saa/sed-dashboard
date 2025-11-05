@@ -1,0 +1,140 @@
+service: unified-monitoring-dashboard
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  memorySize: 512
+  timeout: 30
+
+  environment:
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+    STAGE: ${self:provider.stage}
+
+  iam:
+    role:
+      statements:
+        # DynamoDB 읽기 권한 (한국어 테이블)
+        - Effect: Allow
+          Action:
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:GetItem
+          Resource:
+            - arn:aws:dynamodb:${self:provider.region}:*:table/nx-tt-dev-ver3-usage-tracking
+            - arn:aws:dynamodb:${self:provider.region}:*:table/nx-wt-prf-usage
+            - arn:aws:dynamodb:${self:provider.region}:*:table/w1-usage
+            - arn:aws:dynamodb:${self:provider.region}:*:table/f1-usage-two
+            - arn:aws:dynamodb:${self:provider.region}:*:table/sedaily-column-usage
+            - arn:aws:dynamodb:${self:provider.region}:*:table/p2-two-usage-two
+            # 영어 버전 테이블 추가
+            - arn:aws:dynamodb:${self:provider.region}:*:table/tf1-usage-two
+            - arn:aws:dynamodb:${self:provider.region}:*:table/er1-usage-two
+        # Cognito 읽기 권한
+        - Effect: Allow
+          Action:
+            - cognito-idp:AdminGetUser
+            - cognito-idp:ListUsers
+          Resource:
+            - arn:aws:cognito-idp:${self:provider.region}:*:userpool/us-east-1_ohLOswurY
+
+functions:
+  # 전체 서비스 사용량 조회
+  getAllUsage:
+    handler: src/handlers/usageHandler.getAllUsage
+    events:
+      - http:
+          path: usage/all
+          method: get
+          cors: true
+
+  # 특정 서비스 사용량 조회
+  getUsageByService:
+    handler: src/handlers/usageHandler.getUsageByService
+    events:
+      - http:
+          path: usage/{serviceId}
+          method: get
+          cors: true
+
+  # 사용량 요약 통계
+  getUsageSummary:
+    handler: src/handlers/usageHandler.getUsageSummary
+    events:
+      - http:
+          path: usage/summary
+          method: get
+          cors: true
+
+  # Top 5 서비스
+  getTopServices:
+    handler: src/handlers/usageHandler.getTopServices
+    events:
+      - http:
+          path: usage/top/services
+          method: get
+          cors: true
+
+  # Top 5 엔진
+  getTopEngines:
+    handler: src/handlers/usageHandler.getTopEngines
+    events:
+      - http:
+          path: usage/top/engines
+          method: get
+          cors: true
+
+  # 일별 사용량 추이
+  getDailyUsageTrend:
+    handler: src/handlers/usageHandler.getDailyUsageTrend
+    events:
+      - http:
+          path: usage/trend/daily
+          method: get
+          cors: true
+
+  # 월별 사용량 추이
+  getMonthlyUsageTrend:
+    handler: src/handlers/usageHandler.getMonthlyUsageTrend
+    events:
+      - http:
+          path: usage/trend/monthly
+          method: get
+          cors: true
+
+  # 사용자별 사용량 조회 (이메일 검색)
+  getUserUsageByEmail:
+    handler: src/handlers/usageHandler.getUserUsageByEmail
+    events:
+      - http:
+          path: usage/user
+          method: get
+          cors: true
+
+  # 전체 사용자 및 사용량 조회
+  getAllUsersUsage:
+    handler: src/handlers/usageHandler.getAllUsersUsage
+    events:
+      - http:
+          path: usage/users/all
+          method: get
+          cors: true
+
+  # 사용자 가입 추이
+  getUsersRegistrationTrend:
+    handler: src/handlers/usageHandler.getUsersRegistrationTrend
+    events:
+      - http:
+          path: usage/users/registration-trend
+          method: get
+          cors: true
+
+plugins:
+  - serverless-offline
+
+custom:
+  serverless-offline:
+    httpPort: 3001

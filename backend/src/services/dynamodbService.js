@@ -7,19 +7,20 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { CognitoIdentityProviderClient, AdminGetUserCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { SERVICES_CONFIG } from '../config/services.js';
+import { AWS_CONFIG, COGNITO_CONFIG } from '../config/constants.js';
+import { DynamoDBError, CognitoError, NotFoundError } from '../utils/errors.js';
 
-const client = new DynamoDBClient({ region: 'us-east-1' });
+const client = new DynamoDBClient({ region: AWS_CONFIG.REGION });
 const docClient = DynamoDBDocumentClient.from(client);
-const cognitoClient = new CognitoIdentityProviderClient({ region: 'us-east-1' });
+const cognitoClient = new CognitoIdentityProviderClient({ region: AWS_CONFIG.REGION });
 
-// 사용자 테이블 이름
+// 사용자 테이블 이름 (현재는 Cognito만 사용)
 const USER_TABLES = {
-  title: '',
-  // 다른 서비스의 사용자 테이블은 필요시 추가
+  // 필요 시 DynamoDB 사용자 테이블 추가
 };
 
 // Cognito User Pool ID
-const USER_POOL_ID = 'us-east-1_ohLOswurY'; // sedaily.ai_cognito
+const USER_POOL_ID = AWS_CONFIG.COGNITO_USER_POOL_ID;
 
 /**
  * Cognito에서 사용자 정보 가져오기
@@ -99,16 +100,25 @@ export const getServiceUsage = async (serviceId, yearMonth) => {
     console.log(`Using SK field: ${keyStructure.SK}`);
 
     // Scan 명령으로 전체 데이터 조회
-    const command = new ScanCommand({
-      TableName: tableName,
-      FilterExpression: 'contains(#sk, :yearMonth)',
-      ExpressionAttributeNames: {
-        '#sk': keyStructure.SK
-      },
-      ExpressionAttributeValues: {
-        ':yearMonth': yearMonth
-      }
-    });
+    let command;
+
+    // yearMonth가 'all'이면 필터 없이 전체 스캔
+    if (yearMonth === 'all') {
+      command = new ScanCommand({
+        TableName: tableName
+      });
+    } else {
+      command = new ScanCommand({
+        TableName: tableName,
+        FilterExpression: 'contains(#sk, :yearMonth)',
+        ExpressionAttributeNames: {
+          '#sk': keyStructure.SK
+        },
+        ExpressionAttributeValues: {
+          ':yearMonth': yearMonth
+        }
+      });
+    }
 
     const response = await docClient.send(command);
 
@@ -553,7 +563,7 @@ export const getUserRegistrationTrend = async () => {
     do {
       const command = {
         UserPoolId: USER_POOL_ID,
-        Limit: 60,
+        Limit: COGNITO_CONFIG.FETCH_LIMIT,
         ...(paginationToken && { PaginationToken: paginationToken })
       };
 
