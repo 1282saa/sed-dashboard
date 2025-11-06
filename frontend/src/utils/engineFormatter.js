@@ -1,6 +1,6 @@
 /**
  * 엔진 이름 포맷터
- * 각 서비스별로 엔진 이름을 순차 번호로 표시하여 구분하기 쉽게 변환
+ * 각 서비스별로 엔진 이름을 고정된 순서 번호로 표시하여 구분하기 쉽게 변환
  */
 
 // 서비스별 프리픽스 매핑
@@ -13,31 +13,52 @@ const SERVICE_PREFIX = {
   buddy: 'b1',        // 버디 (Buddy)
 };
 
-// 서비스별 엔진 순서 매핑 (각 엔진의 고유 인덱스)
+// 서비스별 엔진 순서 매핑 (고정된 순서)
+// DynamoDB 테이블 순서에 맞춰 정의
 const ENGINE_INDEX_MAP = {
-  title: {},        // 동적으로 생성
-  proofreading: {}, // 동적으로 생성
-  news: {},         // 동적으로 생성
-  foreign: {},      // 동적으로 생성
-  revision: {},     // 동적으로 생성
-  buddy: {},        // 동적으로 생성
-};
+  // 제목 서비스 (Title)
+  title: {
+    't5': 1,        // t1-1
+    'c7': 2,        // t1-2
+    'pro': 3,       // t1-3
+    '11/22': 4,     // t1-4
+    '2024-11-22': 4, // 날짜 형식도 같은 번호
+  },
 
-// 각 서비스별 엔진 카운터
-const ENGINE_COUNTERS = {
-  title: 1,
-  proofreading: 1,
-  news: 1,
-  foreign: 1,
-  revision: 1,
-  buddy: 1,
+  // 교열 서비스 (Proofreading)
+  proofreading: {
+    'basic': 1,     // p1-1
+    'pro': 2,       // p1-2
+    'elite': 3,     // p1-3
+  },
+
+  // 보도 서비스 (News/Writing)
+  news: {
+    'w1': 1,        // w1-1
+  },
+
+  // 외신 서비스 (Foreign)
+  foreign: {
+    'f1': 1,        // f1-1
+  },
+
+  // 퇴고 서비스 (Revision)
+  revision: {
+    'column': 1,    // r1-1
+    'c1': 2,        // r1-2
+  },
+
+  // 버디 서비스 (Buddy)
+  buddy: {
+    'p2': 1,        // b1-1
+  },
 };
 
 /**
  * 엔진 이름을 순차 번호로 변환
- * @param {string} engineName - 원본 엔진 이름 (예: "t5", "Basic", "11/22")
+ * @param {string} engineName - 원본 엔진 이름 (예: "t5", "Basic", "w1")
  * @param {string} serviceId - 서비스 ID (예: "title", "proofreading")
- * @returns {string} 포맷된 엔진 이름 (예: "t1-1", "p1-2", "t1-3")
+ * @returns {string} 포맷된 엔진 이름 (예: "t1-1", "p1-2", "w1-1")
  */
 export const formatEngineName = (engineName, serviceId) => {
   if (!engineName) return 'Unknown';
@@ -49,15 +70,17 @@ export const formatEngineName = (engineName, serviceId) => {
   // 엔진 이름을 소문자로 정규화
   const normalizedEngine = String(engineName).toLowerCase().trim();
 
-  // 이미 매핑된 엔진인지 확인
-  if (!ENGINE_INDEX_MAP[serviceId][normalizedEngine]) {
-    // 새로운 엔진이면 순차 번호 부여
-    ENGINE_INDEX_MAP[serviceId][normalizedEngine] = ENGINE_COUNTERS[serviceId];
-    ENGINE_COUNTERS[serviceId]++;
+  // 고정된 매핑에서 인덱스 찾기
+  const engineMap = ENGINE_INDEX_MAP[serviceId];
+  const engineIndex = engineMap?.[normalizedEngine];
+
+  if (engineIndex) {
+    return `${prefix}-${engineIndex}`;
   }
 
-  const engineIndex = ENGINE_INDEX_MAP[serviceId][normalizedEngine];
-  return `${prefix}-${engineIndex}`;
+  // 매핑되지 않은 엔진은 원본 이름 유지 (디버깅용)
+  console.warn(`Unknown engine "${engineName}" for service "${serviceId}"`);
+  return `${prefix}-${normalizedEngine}`;
 };
 
 /**
