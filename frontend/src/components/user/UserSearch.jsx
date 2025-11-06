@@ -3,6 +3,7 @@ import { Search, User, Mail, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Card from '../common/Card';
 import { fetchUserUsageByEmail } from '../../services/api';
+import { formatEngineName } from '../../utils/engineFormatter';
 
 /**
  * 사용자 검색 및 사용량 조회 컴포넌트
@@ -169,15 +170,21 @@ const UserSearch = ({ selectedMonth, selectedService = 'title' }) => {
                             </tr>
                           </thead>
                           <tbody>
-                            {userData.usage.details.map((detail, index) => (
-                              <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                                <td className="p-2 text-gray-900 font-medium">{detail.engineType}</td>
-                                <td className="p-2 text-right text-gray-900">{detail.totalTokens.toLocaleString()}</td>
-                                <td className="p-2 text-right text-gray-600">{detail.inputTokens.toLocaleString()}</td>
-                                <td className="p-2 text-right text-gray-600">{detail.outputTokens.toLocaleString()}</td>
-                                <td className="p-2 text-right text-gray-600">{detail.messageCount.toLocaleString()}</td>
-                              </tr>
-                            ))}
+                            {userData.usage.details.map((detail, index) => {
+                              // 서비스 ID 추출
+                              const serviceId = selectedService.replace(/_kr$|_en$/, '');
+                              const formattedEngine = formatEngineName(detail.engineType, serviceId);
+
+                              return (
+                                <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                                  <td className="p-2 text-gray-900 font-medium">{formattedEngine}</td>
+                                  <td className="p-2 text-right text-gray-900">{detail.totalTokens.toLocaleString()}</td>
+                                  <td className="p-2 text-right text-gray-600">{detail.inputTokens.toLocaleString()}</td>
+                                  <td className="p-2 text-right text-gray-600">{detail.outputTokens.toLocaleString()}</td>
+                                  <td className="p-2 text-right text-gray-600">{detail.messageCount.toLocaleString()}</td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
