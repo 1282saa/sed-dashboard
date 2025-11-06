@@ -1,6 +1,6 @@
 /**
  * 엔진 이름 포맷터
- * 각 서비스별로 엔진 이름에 프리픽스를 추가하여 구분하기 쉽게 표시
+ * 각 서비스별로 엔진 이름을 순차 번호로 표시하여 구분하기 쉽게 변환
  */
 
 // 서비스별 프리픽스 매핑
@@ -13,11 +13,31 @@ const SERVICE_PREFIX = {
   buddy: 'b1',        // 버디 (Buddy)
 };
 
+// 서비스별 엔진 순서 매핑 (각 엔진의 고유 인덱스)
+const ENGINE_INDEX_MAP = {
+  title: {},        // 동적으로 생성
+  proofreading: {}, // 동적으로 생성
+  news: {},         // 동적으로 생성
+  foreign: {},      // 동적으로 생성
+  revision: {},     // 동적으로 생성
+  buddy: {},        // 동적으로 생성
+};
+
+// 각 서비스별 엔진 카운터
+const ENGINE_COUNTERS = {
+  title: 1,
+  proofreading: 1,
+  news: 1,
+  foreign: 1,
+  revision: 1,
+  buddy: 1,
+};
+
 /**
- * 엔진 이름에 서비스 프리픽스 추가
+ * 엔진 이름을 순차 번호로 변환
  * @param {string} engineName - 원본 엔진 이름 (예: "t5", "Basic", "11/22")
  * @param {string} serviceId - 서비스 ID (예: "title", "proofreading")
- * @returns {string} 포맷된 엔진 이름 (예: "t1-t5", "p1-basic", "t1-11/22")
+ * @returns {string} 포맷된 엔진 이름 (예: "t1-1", "p1-2", "t1-3")
  */
 export const formatEngineName = (engineName, serviceId) => {
   if (!engineName) return 'Unknown';
@@ -26,10 +46,18 @@ export const formatEngineName = (engineName, serviceId) => {
   const prefix = SERVICE_PREFIX[serviceId];
   if (!prefix) return engineName;
 
-  // 엔진 이름을 소문자로 변환
-  const lowerEngineName = engineName.toLowerCase();
+  // 엔진 이름을 소문자로 정규화
+  const normalizedEngine = String(engineName).toLowerCase().trim();
 
-  return `${prefix}-${lowerEngineName}`;
+  // 이미 매핑된 엔진인지 확인
+  if (!ENGINE_INDEX_MAP[serviceId][normalizedEngine]) {
+    // 새로운 엔진이면 순차 번호 부여
+    ENGINE_INDEX_MAP[serviceId][normalizedEngine] = ENGINE_COUNTERS[serviceId];
+    ENGINE_COUNTERS[serviceId]++;
+  }
+
+  const engineIndex = ENGINE_INDEX_MAP[serviceId][normalizedEngine];
+  return `${prefix}-${engineIndex}`;
 };
 
 /**
