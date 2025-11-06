@@ -34,12 +34,14 @@ const ENGINE_INDEX_MAP = {
 
   // 보도 서비스 (News/Writing)
   news: {
-    'w1': 1,        // w1-1
+    '11': 1,        // w1-1
+    '22': 2,        // w1-2
   },
 
   // 외신 서비스 (Foreign)
   foreign: {
-    'f1': 1,        // f1-1
+    '11': 1,        // f1-1
+    '22': 2,        // f1-2
   },
 
   // 퇴고 서비스 (Revision)
@@ -50,7 +52,8 @@ const ENGINE_INDEX_MAP = {
 
   // 버디 서비스 (Buddy)
   buddy: {
-    'p2': 1,        // b1-1
+    '11': 1,        // b1-1
+    '22': 2,        // b1-2
   },
 };
 
