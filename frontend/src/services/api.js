@@ -4,6 +4,7 @@
  */
 
 import axios from 'axios';
+import { API_TIMEOUT, DEFAULT_YEAR_MONTH, DEFAULT_USER_YEAR_MONTH, DEFAULT_LIMIT, DEFAULT_MONTHS } from '../constants/defaults';
 
 // API Base URL (환경변수로 설정)
 // 로컬 개발: http://localhost:3001
@@ -13,7 +14,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001
 // Axios 인스턴스 생성
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -22,7 +23,7 @@ const apiClient = axios.create({
 /**
  * 전체 서비스 사용량 조회
  */
-export const fetchAllServicesUsage = async (yearMonth = '2025-10') => {
+export const fetchAllServicesUsage = async (yearMonth = DEFAULT_YEAR_MONTH) => {
   try {
     const response = await apiClient.get('/usage/all', {
       params: { yearMonth }
@@ -37,7 +38,7 @@ export const fetchAllServicesUsage = async (yearMonth = '2025-10') => {
 /**
  * 특정 서비스 사용량 조회
  */
-export const fetchServiceUsage = async (serviceId, yearMonth = '2025-10') => {
+export const fetchServiceUsage = async (serviceId, yearMonth = DEFAULT_YEAR_MONTH) => {
   try {
     const response = await apiClient.get(`/usage/${serviceId}`, {
       params: { yearMonth }
@@ -52,7 +53,7 @@ export const fetchServiceUsage = async (serviceId, yearMonth = '2025-10') => {
 /**
  * 통계 요약 조회
  */
-export const fetchUsageSummary = async (yearMonth = '2025-10') => {
+export const fetchUsageSummary = async (yearMonth = DEFAULT_YEAR_MONTH) => {
   try {
     const response = await apiClient.get('/usage/summary', {
       params: { yearMonth }
@@ -67,7 +68,7 @@ export const fetchUsageSummary = async (yearMonth = '2025-10') => {
 /**
  * Top 5 서비스 조회
  */
-export const fetchTopServices = async (yearMonth = '2025-10', limit = 5) => {
+export const fetchTopServices = async (yearMonth = DEFAULT_YEAR_MONTH, limit = DEFAULT_LIMIT) => {
   try {
     const response = await apiClient.get('/usage/top/services', {
       params: { yearMonth, limit }
@@ -82,7 +83,7 @@ export const fetchTopServices = async (yearMonth = '2025-10', limit = 5) => {
 /**
  * Top 5 엔진 조회
  */
-export const fetchTopEngines = async (yearMonth = '2025-10', limit = 5) => {
+export const fetchTopEngines = async (yearMonth = DEFAULT_YEAR_MONTH, limit = DEFAULT_LIMIT) => {
   try {
     const response = await apiClient.get('/usage/top/engines', {
       params: { yearMonth, limit }
@@ -97,7 +98,7 @@ export const fetchTopEngines = async (yearMonth = '2025-10', limit = 5) => {
 /**
  * 일별 사용량 추이 조회
  */
-export const fetchDailyUsageTrend = async (serviceId = null, yearMonth = '2025-10') => {
+export const fetchDailyUsageTrend = async (serviceId = null, yearMonth = DEFAULT_YEAR_MONTH) => {
   try {
     // serviceId가 빈 문자열이거나 null이면 파라미터에서 제외
     const params = { yearMonth };
@@ -118,7 +119,7 @@ export const fetchDailyUsageTrend = async (serviceId = null, yearMonth = '2025-1
 /**
  * 월별 사용량 추이 조회
  */
-export const fetchMonthlyUsageTrend = async (serviceId = null, months = 12) => {
+export const fetchMonthlyUsageTrend = async (serviceId = null, months = DEFAULT_MONTHS) => {
   try {
     const response = await apiClient.get('/usage/trend/monthly', {
       params: { serviceId, months }
@@ -133,7 +134,7 @@ export const fetchMonthlyUsageTrend = async (serviceId = null, months = 12) => {
 /**
  * 이메일로 사용자 사용량 조회
  */
-export const fetchUserUsageByEmail = async (email, serviceId = 'title', yearMonth = '2025-08') => {
+export const fetchUserUsageByEmail = async (email, serviceId = 'title', yearMonth = DEFAULT_USER_YEAR_MONTH) => {
   try {
     const response = await apiClient.get('/usage/user', {
       params: { email, serviceId, yearMonth }
@@ -148,7 +149,7 @@ export const fetchUserUsageByEmail = async (email, serviceId = 'title', yearMont
 /**
  * 모든 사용자와 사용량 조회
  */
-export const fetchAllUsersUsage = async (serviceId = '', yearMonth = '2025-08') => {
+export const fetchAllUsersUsage = async (serviceId = '', yearMonth = DEFAULT_USER_YEAR_MONTH) => {
   try {
     // serviceId가 빈 문자열이면 파라미터에서 제외
     const params = { yearMonth };

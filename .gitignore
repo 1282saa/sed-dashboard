@@ -52,3 +52,18 @@ coverage
 # Temporary files
 *.tmp
 *.temp
+
+# Serverless deployment
+.serverless/
+.serverless_plugins/
+
+# Frontend specific
+frontend/dist/
+frontend/.vite/
+
+# PR and documentation drafts
+PR_BODY.md
+
+# Cache
+.turbo/
+*.log.*
