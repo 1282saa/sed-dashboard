@@ -3,6 +3,7 @@ import { Users, Activity, TrendingUp, TrendingDown, Search, X } from 'lucide-rea
 import { motion } from 'framer-motion';
 import Card from '../common/Card';
 import { fetchAllUsersUsage } from '../../services/api';
+import { formatEngineName } from '../../utils/engineFormatter';
 
 /**
  * 모든 사용자의 사용량을 표시하는 테이블 컴포넌트
@@ -252,11 +253,17 @@ const UsersTable = ({ selectedMonth, selectedService = 'title' }) => {
                       <td className="p-3">
                         <div className="flex flex-col gap-1">
                           {userData.usage.details && userData.usage.details.length > 0 ? (
-                            userData.usage.details.map((detail, idx) => (
-                              <span key={idx} className="inline-flex px-2 py-1 text-xs font-medium rounded bg-slate-100 text-slate-700 border border-slate-200">
-                                {detail.engineType} ({detail.totalTokens.toLocaleString()})
-                              </span>
-                            ))
+                            userData.usage.details.map((detail, idx) => {
+                              // 서비스 ID 추출 (detail.serviceId가 있으면 사용, 없으면 selectedService에서)
+                              const serviceId = detail.serviceId || selectedService.replace(/_kr$|_en$/, '');
+                              const formattedEngine = formatEngineName(detail.engineType, serviceId);
+
+                              return (
+                                <span key={idx} className="inline-flex px-2 py-1 text-xs font-medium rounded bg-slate-100 text-slate-700 border border-slate-200">
+                                  {formattedEngine} ({detail.totalTokens.toLocaleString()})
+                                </span>
+                              );
+                            })
                           ) : (
                             <span className="text-xs text-gray-400">-</span>
                           )}
