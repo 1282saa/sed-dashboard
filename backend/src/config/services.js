@@ -17,7 +17,7 @@ export const SERVICES_CONFIG = [
     icon: '📝',
     category: 'sedaily',
     engines: ['T5', 'C7', 'pro'],
-    active: true, // ✅ 124개 레코드
+    active: true, // ✅ 153개 레코드 (한국어), 3개 레코드 (영어)
     keyStructure: { PK: 'user#userId', SK: 'engine#engineType#yearMonth' },
     keyStructureEn: { PK: 'userId', SK: 'date' }, // 영어 버전 키 구조
   },
@@ -32,7 +32,7 @@ export const SERVICES_CONFIG = [
     icon: '✓',
     category: 'sedaily',
     engines: ['Basic', 'Pro', 'Elite'],
-    active: true, // ✅ 71개 레코드
+    active: true, // ✅ 90개 레코드
     keyStructure: { PK: 'userId', SK: 'yearMonth' },
   },
   {
@@ -46,7 +46,7 @@ export const SERVICES_CONFIG = [
     icon: '📰',
     category: 'sedaily',
     engines: ['w1'],
-    active: true, // ✅ 활성화됨
+    active: true, // ✅ 18개 레코드
     keyStructure: { PK: 'userId', SK: 'yearMonth' },
   },
   {
@@ -60,7 +60,7 @@ export const SERVICES_CONFIG = [
     icon: '🌍',
     category: 'sedaily',
     engines: ['f1'],
-    active: false, // ⏳ 준비됨 (0개)
+    active: true, // ✅ 6개 레코드
     keyStructure: { PK: 'userId', SK: 'date' },
   },
   {
@@ -75,7 +75,7 @@ export const SERVICES_CONFIG = [
     icon: '✍️',
     category: 'sedaily',
     engines: ['column', 'C1'],
-    active: true, // ✅ 활성화됨
+    active: true, // ✅ 10개 레코드 (한국어), 1개 레코드 (영어)
     keyStructure: { PK: 'userId', SK: 'usageDate#engineType' },
     keyStructureEn: { PK: 'userId', SK: 'date' }, // 영어 버전 키 구조
   },
@@ -90,7 +90,7 @@ export const SERVICES_CONFIG = [
     icon: '🤝',
     category: 'sedaily',
     engines: ['p2'],
-    active: false, // ⏳ 준비됨 (0개)
+    active: true, // ✅ 31개 레코드
     keyStructure: { PK: 'userId', SK: 'date' },
   },
 ];
