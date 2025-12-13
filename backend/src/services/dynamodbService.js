@@ -3,16 +3,27 @@
  * DynamoDB 테이블 쿼리 및 데이터 집계
  */
 
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, ScanCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import { CognitoIdentityProviderClient, AdminGetUserCommand } from '@aws-sdk/client-cognito-identity-provider';
-import { SERVICES_CONFIG } from '../config/services.js';
-import { AWS_CONFIG, COGNITO_CONFIG } from '../config/constants.js';
-import { DynamoDBError, CognitoError, NotFoundError } from '../utils/errors.js';
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, ScanCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+const { CognitoIdentityProviderClient, AdminGetUserCommand } = require('@aws-sdk/client-cognito-identity-provider');
+const { SERVICES_CONFIG } = require('../config/services.js');
+const { AWS_CONFIG, COGNITO_CONFIG } = require('../config/constants.js');
+const { DynamoDBError, CognitoError, NotFoundError } = require('../utils/errors.js');
 
+// 기본 클라이언트 (ap-northeast-2)
 const client = new DynamoDBClient({ region: AWS_CONFIG.REGION });
 const docClient = DynamoDBDocumentClient.from(client);
+
+// us-east-1 리전용 클라이언트
+const usEast1Client = new DynamoDBClient({ region: 'us-east-1' });
+const usEast1DocClient = DynamoDBDocumentClient.from(usEast1Client);
+
 const cognitoClient = new CognitoIdentityProviderClient({ region: AWS_CONFIG.REGION });
+
+// 서비스별 적절한 DynamoDB 클라이언트 반환
+const getDocClient = (service) => {
+  return service.region === 'us-east-1' ? usEast1DocClient : docClient;
+};
 
 // 사용자 테이블 이름 (현재는 Cognito만 사용)
 const USER_TABLES = {
@@ -83,7 +94,7 @@ const getTableConfigForService = (service, serviceIdWithLang) => {
 /**
  * 특정 서비스의 사용량 데이터 조회
  */
-export const getServiceUsage = async (serviceId, yearMonth) => {
+exports. getServiceUsage = async (serviceId, yearMonth) => {
   // _en, _kr 접미사 제거하여 실제 서비스 찾기
   const actualServiceId = serviceId.replace(/_kr$|_en$/, '');
   const service = SERVICES_CONFIG.find(s => s.id === actualServiceId);
@@ -108,11 +119,16 @@ export const getServiceUsage = async (serviceId, yearMonth) => {
         TableName: tableName
       });
     } else {
+      // 실제 SK 필드명 결정
+      // keyStructure.SK는 'engine#engineType#yearMonth' 같은 형식이거나 'yearMonth' 같은 실제 필드명일 수 있음
+      const skFieldName = keyStructure.SK.includes('#') ? 'SK' : keyStructure.SK;
+      
       command = new ScanCommand({
         TableName: tableName,
-        FilterExpression: 'contains(#sk, :yearMonth)',
+        FilterExpression: 'contains(#sk, :yearMonth) OR #yearMonth = :yearMonth',
         ExpressionAttributeNames: {
-          '#sk': keyStructure.SK
+          '#sk': skFieldName,
+          '#yearMonth': 'yearMonth'
         },
         ExpressionAttributeValues: {
           ':yearMonth': yearMonth
@@ -120,9 +136,50 @@ export const getServiceUsage = async (serviceId, yearMonth) => {
       });
     }
 
-    const response = await docClient.send(command);
+    const serviceDocClient = getDocClient(service);
+    const response = await serviceDocClient.send(command);
 
     console.log(`Found ${response.Count} items for ${actualServiceId} (table: ${tableName})`);
+    
+    // 교열 서비스의 경우 engineType 필드를 기준으로 그룹화
+    if (actualServiceId === 'proofreading' && response.Items && response.Items.length > 0) {
+      console.log('Proofreading service - checking for engineType variations');
+      
+      // 사용자별로 모든 엔진 타입의 데이터를 수집
+      const userEngineMap = {};
+      
+      response.Items.forEach(item => {
+        const userId = item.userId || item.PK;
+        const engineType = item.engineType || 'unknown';
+        const key = `${userId}-${engineType}`;
+        
+        // 기존 데이터가 있으면 토큰과 메시지 수를 누적
+        if (userEngineMap[key]) {
+          userEngineMap[key].totalTokens += (item.totalTokens || 0);
+          userEngineMap[key].inputTokens += (item.inputTokens || item.totalInputTokens || 0);
+          userEngineMap[key].outputTokens += (item.outputTokens || item.totalOutputTokens || 0);
+          userEngineMap[key].messageCount += (item.messageCount || item.messages || item.requestCount || 1);
+        } else {
+          userEngineMap[key] = {
+            ...item,
+            _originalEngineType: engineType,
+            _userId: userId
+          };
+        }
+      });
+      
+      // Map을 배열로 변환
+      const expandedItems = Object.values(userEngineMap);
+      console.log(`Expanded ${response.Count} items to ${expandedItems.length} items with engineType differentiation`);
+      
+      return {
+        serviceId: actualServiceId,
+        serviceName: service.displayName,
+        items: expandedItems,
+        count: expandedItems.length
+      };
+    }
+    
     if (response.Items && response.Items.length > 0) {
       console.log('Sample item:', JSON.stringify(response.Items[0]));
     }
@@ -148,12 +205,12 @@ export const getServiceUsage = async (serviceId, yearMonth) => {
 /**
  * 모든 활성 서비스의 사용량 데이터 조회
  */
-export const getAllServicesUsage = async (yearMonth) => {
+exports.getAllServicesUsage = async (yearMonth) => {
   const services = SERVICES_CONFIG;
 
   // 병렬로 모든 서비스 조회
   const promises = services.map(service =>
-    getServiceUsage(service.id, yearMonth)
+    exports.getServiceUsage(service.id, yearMonth)
   );
 
   const results = await Promise.all(promises);
@@ -164,7 +221,7 @@ export const getAllServicesUsage = async (yearMonth) => {
 /**
  * 사용량 데이터 집계
  */
-export const aggregateUsageData = (items, serviceConfig) => {
+exports. aggregateUsageData = (items, serviceConfig) => {
   let totalTokens = 0;
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
@@ -234,6 +291,29 @@ const extractUserId = (item, serviceConfig) => {
  * SK에서 engineType 추출
  */
 const extractEngineType = (item, serviceConfig) => {
+  // 교열 서비스는 engineType 필드를 직접 사용
+  if (serviceConfig.id === 'proofreading') {
+    // _originalEngineType은 이미 처리된 경우
+    if (item._originalEngineType) {
+      return item._originalEngineType.toLowerCase();
+    }
+    
+    // engineType 필드 확인 (basic, pro 등)
+    if (item.engineType) {
+      // 11 -> basic, 22 -> pro 매핑 (모두 소문자로)
+      const engineTypeStr = String(item.engineType).toLowerCase();
+      const engineMap = {
+        '11': 'basic',
+        '22': 'pro',
+        'basic': 'basic',
+        'pro': 'pro'
+      };
+      return engineMap[engineTypeStr] || engineTypeStr;
+    }
+    
+    return 'unknown';
+  }
+  
   const skField = serviceConfig.keyStructure.SK;
   const skValue = item[skField] || item.SK;
 
@@ -256,7 +336,7 @@ const extractEngineType = (item, serviceConfig) => {
 /**
  * 월별 데이터 집계
  */
-export const getMonthlyTrend = async (serviceId, monthsBack = 12) => {
+exports. getMonthlyTrend = async (serviceId, monthsBack = 12) => {
   const currentDate = new Date();
   const monthlyData = [];
 
@@ -290,7 +370,7 @@ export const getMonthlyTrend = async (serviceId, monthsBack = 12) => {
 /**
  * 일별 데이터 집계 (특정 월 또는 전체 기간)
  */
-export const getDailyTrend = async (serviceId, yearMonth) => {
+exports. getDailyTrend = async (serviceId, yearMonth) => {
   let allItems = [];
 
   // yearMonth가 'all'이거나 날짜 범위인 경우 전체 스캔
@@ -307,7 +387,8 @@ export const getDailyTrend = async (serviceId, yearMonth) => {
       const command = new ScanCommand({
         TableName: tableName
       });
-      const response = await docClient.send(command);
+      const serviceDocClient = getDocClient(service);
+      const response = await serviceDocClient.send(command);
       allItems = (response.Items || []).map(item => ({
         ...item,
         _serviceConfig: { ...service, keyStructure } // 영어 버전 키 구조 포함
@@ -329,7 +410,8 @@ export const getDailyTrend = async (serviceId, yearMonth) => {
         const command = new ScanCommand({
           TableName: service.usageTable
         });
-        const response = await docClient.send(command);
+        const serviceDocClient = getDocClient(service);
+        const response = await serviceDocClient.send(command);
         return {
           serviceId: service.id,
           items: response.Items || [],
@@ -429,45 +511,96 @@ export const getDailyTrend = async (serviceId, yearMonth) => {
  * 날짜 추출
  */
 const extractDate = (item, serviceConfig) => {
-  // createdAt, timestamp, date 등의 필드에서 날짜 추출
-  const dateField = item.createdAt || item.timestamp || item.date || item.usageDate;
-
-  if (!dateField) {
-    // SK에서 추출 시도
-    const skField = serviceConfig.keyStructure.SK;
-    const skValue = item[skField] || item.SK;
-
-    if (skValue && typeof skValue === 'string') {
-      // "2025-10-24" 형태의 날짜 추출
-      const match = skValue.match(/\d{4}-\d{2}-\d{2}/);
+  // 1. 먼저 명시적인 date 필드 확인
+  if (item.date) {
+    // "2025-10-28#11" 같은 형태에서 날짜만 추출
+    if (typeof item.date === 'string') {
+      if (item.date.includes('#')) {
+        return item.date.split('#')[0];
+      }
+      const match = item.date.match(/\d{4}-\d{2}-\d{2}/);
       if (match) return match[0];
     }
-
-    return null;
+    return item.date;
   }
 
-  // 문자열인 경우 날짜 부분만 추출
-  if (typeof dateField === 'string') {
-    // "2025-10-28#11" 같은 형태에서 날짜만 추출
-    if (dateField.includes('#')) {
-      return dateField.split('#')[0];
-    }
-    // ISO 형태면 날짜 부분만 추출
-    if (dateField.includes('T')) {
-      return dateField.split('T')[0];
+  // 2. lastUsedAt이 가장 정확한 날짜 필드 (제목 서비스에서 사용)
+  if (item.lastUsedAt && typeof item.lastUsedAt === 'string') {
+    // ISO 형태 "2025-12-09T07:45:42.562945+00:00"에서 날짜 부분만 추출
+    if (item.lastUsedAt.includes('T')) {
+      return item.lastUsedAt.split('T')[0];
     }
     // YYYY-MM-DD 형태의 날짜 추출
-    const match = dateField.match(/\d{4}-\d{2}-\d{2}/);
+    const match = item.lastUsedAt.match(/\d{4}-\d{2}-\d{2}/);
     if (match) return match[0];
   }
+  
+  // 3. updatedAt 필드 확인 (교열 서비스에서 주로 사용)
+  if (item.updatedAt && typeof item.updatedAt === 'string') {
+    // ISO 형태 "2025-12-12T06:56:28.970208+00:00"에서 날짜 부분만 추출
+    if (item.updatedAt.includes('T')) {
+      return item.updatedAt.split('T')[0];
+    }
+    // YYYY-MM-DD 형태의 날짜 추출
+    const match = item.updatedAt.match(/\d{4}-\d{2}-\d{2}/);
+    if (match) return match[0];
+  }
+  
+  // 4. 다른 timestamp 형태의 날짜 필드들 확인
+  const timestampField = item.createdAt || item.timestamp || item.usageDate;
+  
+  if (timestampField) {
+    // 숫자(유닉스 타임스탬프)인 경우
+    if (typeof timestampField === 'number') {
+      const date = new Date(timestampField * 1000); // 초 단위 타임스탬프 가정
+      return date.toISOString().split('T')[0];
+    }
+    
+    // 문자열인 경우
+    if (typeof timestampField === 'string') {
+      // ISO 형태면 날짜 부분만 추출
+      if (timestampField.includes('T')) {
+        return timestampField.split('T')[0];
+      }
+      // YYYY-MM-DD 형태의 날짜 추출
+      const match = timestampField.match(/\d{4}-\d{2}-\d{2}/);
+      if (match) return match[0];
+    }
+  }
 
-  return dateField;
+  // 4. SK에서 추출 시도
+  const skField = serviceConfig.keyStructure.SK;
+  const skValue = item[skField] || item.SK;
+
+  if (skValue && typeof skValue === 'string') {
+    // SK에서 날짜 패턴 추출
+    const dateMatch = skValue.match(/\d{4}-\d{2}-\d{2}/);
+    if (dateMatch) return dateMatch[0];
+  }
+
+  // 5. yearMonth 필드만 있는 경우 (월 단위 집계 데이터)
+  // 교열 서비스의 경우 정확한 날짜가 없으므로 null 반환
+  // (날짜 범위 필터링에서 제외됨)
+  if (item.yearMonth && !item.lastUsedAt && !item.date) {
+    // 교열 서비스는 월 단위로만 저장되므로 날짜 필터링 불가
+    // yearMonth가 2025-12#basic 형태인 경우 처리
+    const yearMonthStr = item.yearMonth.split('#')[0]; // #engineType 제거
+    const match = yearMonthStr.match(/(\d{4})-(\d{2})/);
+    if (match) {
+      // 날짜 범위 필터링을 위해 null 반환하지 않고
+      // 해당 월의 모든 날짜를 포함하도록 처리 필요
+      // 일단 null 반환하여 날짜 필터링에서 제외
+      return null;
+    }
+  }
+
+  return null;
 };
 
 /**
  * 이메일로 사용자 검색
  */
-export const searchUserByEmail = async (email, serviceId = 'title') => {
+exports. searchUserByEmail = async (email, serviceId = 'title') => {
   const userTable = USER_TABLES[serviceId];
 
   if (!userTable) {
@@ -500,7 +633,7 @@ export const searchUserByEmail = async (email, serviceId = 'title') => {
 /**
  * 사용자 ID로 사용량 조회
  */
-export const getUserUsage = async (userId, serviceId, yearMonth) => {
+exports. getUserUsage = async (userId, serviceId, yearMonth) => {
   const service = SERVICES_CONFIG.find(s => s.id === serviceId);
 
   if (!service) {
@@ -545,14 +678,26 @@ export const getUserUsage = async (userId, serviceId, yearMonth) => {
  */
 const isDateInRange = (dateStr, startDate, endDate) => {
   if (!dateStr) return false;
-  const date = new Date(dateStr);
-  return date >= startDate && date <= endDate;
+  if (!startDate || !endDate) return true; // 범위가 없으면 포함
+  
+  try {
+    // 날짜 문자열을 Date 객체로 변환
+    const date = new Date(dateStr + 'T00:00:00.000Z');
+    const start = new Date(startDate + 'T00:00:00.000Z');
+    const end = new Date(endDate + 'T23:59:59.999Z');
+    
+    // 날짜 비교
+    return date >= start && date <= end;
+  } catch (error) {
+    console.error('Date parsing error in isDateInRange:', error);
+    return false;
+  }
 };
 
 /**
  * 사용자 가입 추이 데이터 조회 (일별 신규 가입자 수)
  */
-export const getUserRegistrationTrend = async () => {
+exports. getUserRegistrationTrend = async () => {
   try {
     console.log('Fetching user registration trend from Cognito');
 
@@ -628,7 +773,7 @@ export const getUserRegistrationTrend = async () => {
 /**
  * 모든 사용자와 사용량 조회 (단일 또는 전체 서비스)
  */
-export const getAllUsersWithUsage = async (serviceId = 'title', yearMonth) => {
+exports.getAllUsersWithUsage = async (serviceId = 'title', yearMonth) => {
   try {
     let allUsageItems = [];
     let startDate = null;
@@ -637,8 +782,8 @@ export const getAllUsersWithUsage = async (serviceId = 'title', yearMonth) => {
     // 날짜 범위 파싱
     if (yearMonth && yearMonth.includes('~')) {
       const [start, end] = yearMonth.split('~');
-      startDate = new Date(start);
-      endDate = new Date(end);
+      startDate = start;
+      endDate = end;
     }
 
     // serviceId가 'all'이거나 비어있으면 전체 서비스 조회
@@ -671,7 +816,8 @@ export const getAllUsersWithUsage = async (serviceId = 'title', yearMonth) => {
           });
         }
 
-        const response = await docClient.send(usageCommand);
+        const serviceDocClient = getDocClient(service);
+        const response = await serviceDocClient.send(usageCommand);
         return {
           service,
           items: response.Items || []
@@ -712,11 +858,15 @@ export const getAllUsersWithUsage = async (serviceId = 'title', yearMonth) => {
           TableName: tableName
         });
       } else {
+        // 실제 SK 필드명 결정
+        const skFieldName = keyStructure.SK.includes('#') ? 'SK' : keyStructure.SK;
+        
         usageCommand = new ScanCommand({
           TableName: tableName,
-          FilterExpression: 'contains(#sk, :yearMonth)',
+          FilterExpression: 'contains(#sk, :yearMonth) OR #yearMonth = :yearMonth',
           ExpressionAttributeNames: {
-            '#sk': keyStructure.SK
+            '#sk': skFieldName,
+            '#yearMonth': 'yearMonth'
           },
           ExpressionAttributeValues: {
             ':yearMonth': yearMonth
@@ -724,7 +874,8 @@ export const getAllUsersWithUsage = async (serviceId = 'title', yearMonth) => {
         });
       }
 
-      const response = await docClient.send(usageCommand);
+      const serviceDocClient = getDocClient(service);
+      const response = await serviceDocClient.send(usageCommand);
       allUsageItems = (response.Items || []).map(item => ({
         ...item,
         _serviceConfig: { ...service, keyStructure } // 영어 버전 키 구조 포함
@@ -735,6 +886,34 @@ export const getAllUsersWithUsage = async (serviceId = 'title', yearMonth) => {
     if (startDate && endDate) {
       allUsageItems = allUsageItems.filter(item => {
         const dateStr = extractDate(item, item._serviceConfig);
+        
+        // 날짜가 없는 경우 (교열 서비스 등 월 단위 데이터)
+        if (!dateStr) {
+          // yearMonth 필드에서 월 정보 추출하여 필터링
+          if (item.yearMonth) {
+            const yearMonthStr = item.yearMonth.split('#')[0]; // #engineType 제거
+            const match = yearMonthStr.match(/(\d{4})-(\d{2})/);
+            if (match) {
+              const itemYear = parseInt(match[1]);
+              const itemMonth = parseInt(match[2]);
+              
+              // 시작/종료 날짜의 년월 추출
+              const startYear = parseInt(startDate.substring(0, 4));
+              const startMonth = parseInt(startDate.substring(5, 7));
+              const endYear = parseInt(endDate.substring(0, 4));
+              const endMonth = parseInt(endDate.substring(5, 7));
+              
+              // 년월 기준으로 필터링
+              const itemYearMonth = itemYear * 100 + itemMonth;
+              const startYearMonth = startYear * 100 + startMonth;
+              const endYearMonth = endYear * 100 + endMonth;
+              
+              return itemYearMonth >= startYearMonth && itemYearMonth <= endYearMonth;
+            }
+          }
+          return false; // yearMonth도 없으면 제외
+        }
+        
         return isDateInRange(dateStr, startDate, endDate);
       });
     }
@@ -828,7 +1007,26 @@ export const getAllUsersWithUsage = async (serviceId = 'title', yearMonth) => {
         // 서비스별 상세 정보
         if (item._serviceConfig) {
           const serviceId = item._serviceConfig.id;
-          const engineType = extractEngineType(item, item._serviceConfig);
+          let engineType = extractEngineType(item, item._serviceConfig);
+          
+          // 교열 서비스의 경우 engineType을 더 정확하게 추출
+          if (serviceId === 'proofreading' && item.engineType) {
+            engineType = item.engineType.toLowerCase();
+          }
+          
+          // yearMonth에서 engineType 추출 (예: "2025-12#basic" -> "basic")
+          if (!engineType && item.yearMonth && item.yearMonth.includes('#')) {
+            const parts = item.yearMonth.split('#');
+            if (parts.length > 1) {
+              engineType = parts[1].toLowerCase();
+            }
+          }
+          
+          // 모든 엔진 타입을 소문자로 정규화 (Basic -> basic, Pro -> pro)
+          if (engineType) {
+            engineType = engineType.toLowerCase();
+          }
+          
           const key = `${serviceId}-${engineType || 'unknown'}`;
 
           if (!serviceDetails[key]) {
